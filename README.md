@@ -166,5 +166,4 @@ tests/
 
 ## Важно
 
-- В репозиторий кладётся только `.env.example`, не `.env` с ключом.
 - Без `DEEPSEEK_API_KEY` работают `/skills` и `/export/docx`; `/assistant/process` вернёт `503`.
