@@ -3,42 +3,31 @@
 from __future__ import annotations
 
 import logging
-import os
 from functools import lru_cache
-from pathlib import Path
 from urllib.parse import quote
 
-from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from src.assistant import process_meeting
-from src.deepseek import DeepSeekClient, DeepSeekError
+from src.config import DOCX_MEDIA, get_settings
+from src.llm import DeepSeekClient, DeepSeekError
 from src.protocol import ProtocolParseError, parse_protocol, protocol_to_docx
 from src.skills import SkillRegistry
 
-ROOT = Path(__file__).resolve().parents[1]
-load_dotenv(ROOT / ".env")
-
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
-
-DOCX_MEDIA = (
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-)
+settings = get_settings()
+logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO))
 
 
 @lru_cache
 def get_registry() -> SkillRegistry:
-    skills_dir = Path(os.getenv("SKILLS_DIR", "skills"))
-    if not skills_dir.is_absolute():
-        skills_dir = ROOT / skills_dir
-    return SkillRegistry(skills_dir)
+    return SkillRegistry(get_settings().skills_dir)
 
 
 @lru_cache
 def get_llm() -> DeepSeekClient:
-    return DeepSeekClient()
+    return DeepSeekClient(settings=get_settings())
 
 
 app = FastAPI(
@@ -138,7 +127,6 @@ async def assistant_process(payload: ProcessRequest):
     except DeepSeekError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    # Основной UX: сразу скачать Word из этой же ручки.
     if payload.export_docx and result.docx_bytes is not None:
         reason = quote(result.reason[:300], safe="")
         return Response(

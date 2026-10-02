@@ -3,9 +3,11 @@
 from fastapi.testclient import TestClient
 
 from src.app import app, get_llm, get_registry
+from src.config import get_settings
 
 
 def _client() -> TestClient:
+    get_settings.cache_clear()
     get_registry.cache_clear()
     get_llm.cache_clear()
     return TestClient(app)
@@ -25,6 +27,7 @@ def test_export_docx(sample_protocol: str) -> None:
 
 def test_process_requires_key(monkeypatch) -> None:
     monkeypatch.setenv("DEEPSEEK_API_KEY", "")
+    get_settings.cache_clear()
     get_registry.cache_clear()
     get_llm.cache_clear()
     response = TestClient(app).post(

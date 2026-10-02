@@ -132,6 +132,8 @@ pytest -v
 
 ![pytest](img/tests.png)
 
+![coverage](img/coverege.png)
+
 ### Описание тестов
 
 #### `tests/test_skills.py` — скиллы и реестр
@@ -161,11 +163,14 @@ pytest -v
 ```
 skills/meeting-minutes/   # SKILL.md, references/, eval_queries.md
 src/
-  app.py                  # FastAPI
-  skills.py               # загрузка + реестр
+  app.py                  # FastAPI + wiring
+  config.py               # env / settings
   assistant.py            # classify → skill → protocol
-  deepseek.py
   protocol.py             # parse + docx
+  llm/
+    deepseek.py           # клиент DeepSeek
+  skills/
+    registry.py           # загрузка + реестр
 tests/
 img/                      # скрины для README
 ```

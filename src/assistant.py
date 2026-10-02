@@ -6,7 +6,7 @@ import json
 import re
 from dataclasses import dataclass
 
-from src.deepseek import DeepSeekClient
+from src.llm import DeepSeekClient
 from src.protocol import parse_protocol, protocol_to_docx
 from src.skills import Skill, SkillRegistry
 

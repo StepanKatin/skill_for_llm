@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import logging
-import os
 
 import httpx
+
+from src.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -18,16 +19,16 @@ class DeepSeekClient:
     def __init__(
         self,
         *,
+        settings: Settings | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
         model: str | None = None,
         timeout: float = 90.0,
     ) -> None:
-        self._api_key = (api_key if api_key is not None else os.getenv("DEEPSEEK_API_KEY", "")).strip()
-        self._base_url = (
-            base_url or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-        ).rstrip("/")
-        self._model = model or os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+        cfg = settings or get_settings()
+        self._api_key = (api_key if api_key is not None else cfg.deepseek_api_key).strip()
+        self._base_url = (base_url or cfg.deepseek_base_url).rstrip("/")
+        self._model = model or cfg.deepseek_model
         self._timeout = timeout
 
     @property
