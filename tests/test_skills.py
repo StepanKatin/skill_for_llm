@@ -1,5 +1,6 @@
 """Skill loading / registry tests."""
 
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from src.skills import SkillRegistry, load_skill_dir, load_skills
@@ -62,12 +63,54 @@ def test_registry_reload(tmp_path: Path) -> None:
     root = tmp_path / "skills"
     _write_skill(root / "alpha", name="alpha", caption="Alpha")
     registry = SkillRegistry(root)
+    same_object = registry
     assert [s.name for s in registry.list_skills()] == ["alpha"]
 
     _write_skill(root / "beta", name="beta", caption="Beta Search")
     registry.reload()
+    assert same_object is registry  # без пересоздания объекта
     assert [s.name for s in registry.list_skills()] == ["alpha", "beta"]
     assert [s.name for s in registry.list_skills("search")] == ["beta"]
+
+
+def test_registry_reload_safe_for_concurrent_readers(tmp_path: Path) -> None:
+    """Readers during reload should not crash and always see a consistent snapshot."""
+    root = tmp_path / "skills"
+    _write_skill(root / "alpha", name="alpha", caption="Alpha")
+    registry = SkillRegistry(root)
+
+    errors: list[BaseException] = []
+
+    def reader() -> None:
+        try:
+            for _ in range(200):
+                skills = registry.list_skills()
+                names = [skill.name for skill in skills]
+                assert names  # snapshot never empty mid-flight for this fixture
+                assert names == sorted(names)
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    def writer() -> None:
+        try:
+            for index in range(50):
+                _write_skill(
+                    root / f"skill-{index}",
+                    name=f"skill-{index}",
+                    caption=f"Skill {index}",
+                )
+                registry.reload()
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        futures = [pool.submit(reader) for _ in range(4)]
+        futures.append(pool.submit(writer))
+        for future in futures:
+            future.result()
+
+    assert errors == []
+    assert registry.list_skills()  # still usable after concurrent reload
 
 
 def test_folder_name_fallback(tmp_path: Path) -> None:
